@@ -1,0 +1,7 @@
+import : [ src ]
+
+$Compiler : "cl"
+
+(cbuild):
+  sources : 'src/**.c'
+  headers : 'src/**.h'
