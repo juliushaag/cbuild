@@ -1,7 +1,8 @@
-import : [ src ]
+import : [ Sandbox, NeuralEngine ]
 
-$Compiler : "cl"
 
-(cbuild):
-  sources : 'src/**.c'
-  headers : 'src/**.h'
+ExitOnWarning : True
+DebugLevel: 4
+Compiler : "cl" 
+Cache : off # Not supported right now 
+StartProject : Sandbox

@@ -1,18 +1,31 @@
-# step one find compilers )
 import os
-from pathlib import Path
-import processes
-from vscompiler import VSInstallation
 import time
+from cbuild.log import log
+from cbuild.vstoolchain import VSInstallation
+from cbuild.project import Project
+import subprocess
+
 
 start = time.monotonic()
-installations = VSInstallation.find_installations()
+toolchain = []
 
-for i in installations: 
-  if i.name != "Visual Studio Community 2019":
-    i.activate()
-    a = i.get_compilers()
-    print(a)
+# step one find compilers :)
+installations : VSInstallation = VSInstallation.find_installations()
+installation = installations[1]
+installation.activate()
+toolchain = installation.get_toolchain()
+
+print("Toolchain: ", toolchain)
+
+log(f"Loaded toolchain in {time.monotonic() - start}s")
+start = time.monotonic()
+
+project = Project(".")
+
+log(f"Loaded project in {time.monotonic() - start}s")
+start = time.monotonic()
+
+print(project)
 
 
-print(f"Took {time.monotonic() - start}s")
+
