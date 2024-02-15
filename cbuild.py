@@ -25,7 +25,7 @@ project = Project(".")
 log(f"Loaded project in {time.monotonic() - start}s")
 start = time.monotonic()
 
-print(project)
-
+target = project.get_start_target()
+print(target)
 
 

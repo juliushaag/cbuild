@@ -1,6 +1,5 @@
 import json
 import os
-import shutil
 import time
 from typing import List, Self
 from pathlib import Path
@@ -10,20 +9,24 @@ from cbuild.processes import run_process
 
 
 class MSVCCompiler(Compiler):
+  NAME = "msvc"
   def __init__(self):
-    super().__init__("MSVC", "cl.exe")  
+    super().__init__("cl.exe")  
 
 class ClangCompiler(Compiler):
+  NAME = "clang"
   def __init__(self):
-    super().__init__("CLANG", "clang.exe", version_cmd="--version")
+    super().__init__("clang.exe", version_cmd="--version")
 
 class CMakeCompiler(Compiler):
+  NAME="cmake"
   def __init__(self):
-    super().__init__("CMAKE", "cmake.exe", version_cmd="--version")
+    super().__init__("cmake.exe", version_cmd="--version", target=["cmake"])
   
 class MSBuildCompiler(Compiler):
+  NAME="msbuild"
   def __init__(self):
-    super().__init__("MSBuild", "msbuild.exe",  version_cmd="--version")
+    super().__init__("msbuild.exe",  version_cmd="--version", target=["msbuild"])
 
 class VSInstallation():
   def __init__(self, name : str, path : Path, version : str, isPreview : str) -> None:
@@ -52,7 +55,7 @@ class VSInstallation():
 
     self.is_activated = True
 
-  def get_toolchain(self) -> List[Compiler]:
+  def get_toolchain(self) -> list[Compiler]:
     assert self.is_activated, "Installation has to be activated before the compilers are queried"
 
     available = [clazz() for clazz in Compiler.__subclasses__()]

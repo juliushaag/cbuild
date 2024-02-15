@@ -1,8 +1,8 @@
 import : [ Sandbox, NeuralEngine ]
 
 
-ExitOnWarning : True
+Cache: off # Not supported right now 
+Compiler: msvc
 DebugLevel: 4
-Compiler : "cl" 
-Cache : off # Not supported right now 
-StartProject : Sandbox
+StartProject: Sandbox
+ExitOnWarning: True
