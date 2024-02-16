@@ -1,3 +1,4 @@
+from functools import reduce
 import os
 from pathlib import Path
 from dataclasses import dataclass
@@ -22,11 +23,14 @@ class Target:
   def file(self):
     return self.root / "project.yaml"
 
+  def get_dependency_list(self):
+    if len(self._dependencies) == 0: return [self]
+    return reduce(lambda x, y: x + y, [c.get_dependency_list() for c in self._dependencies], [self])
+    
   def __repr__(self) -> str:
-    project = f"<{type(self).__name__} of type {self.type:10} at {self.root}>"
-    for dependency in self._dependencies:
-        project += "\n  " + str(dependency)
-    return project
+    return f"<{self.name} of type {self.type} at {self.root}>"
+   
+
 
 class Project:
   def __init__(self, path : str = "."):
@@ -68,9 +72,6 @@ class Project:
         else:
           self._load_setting(key, element)
 
-
-
-
   def _load_target(self, name, content, file, path):
     if name in self._targets: print("[W] Target", name, "gets overwritten")
     panic("type" in content, f"({file}) {name} has no type specified e.g (type=c/c++/cmake...)")
@@ -84,7 +85,6 @@ class Project:
     if name in self._settings: warn("Setting ", name,"overwritten")
     self._settings[name] = content
   
-
   def _resolve_dependencies(self):
     for target in self._targets.values():
       dependencies = target._data.get("depends", [])

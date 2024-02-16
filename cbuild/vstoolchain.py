@@ -5,28 +5,31 @@ from typing import List, Self
 from pathlib import Path
 from cbuild.log import log
 from cbuild.compiler import Compiler
-from cbuild.processes import run_process
+from cbuild.processes import Process, run_process
+from cbuild.project import Target
 
 
-class MSVCCompiler(Compiler):
-  NAME = "msvc"
-  def __init__(self):
-    super().__init__("cl.exe")  
+
 
 class ClangCompiler(Compiler):
   NAME = "clang"
   def __init__(self):
-    super().__init__("clang.exe", version_cmd="--version")
+    super().__init__("clang.exe", version_cmd=True, target="compiled")
 
 class CMakeCompiler(Compiler):
   NAME="cmake"
   def __init__(self):
-    super().__init__("cmake.exe", version_cmd="--version", target=["cmake"])
+    super().__init__("cmake.exe", version_cmd=True, target="cmake")
+
+  def __call__(self, target : Target):
+    assert self.type == target.type
+    print(target)
+
   
 class MSBuildCompiler(Compiler):
   NAME="msbuild"
   def __init__(self):
-    super().__init__("msbuild.exe",  version_cmd="--version", target=["msbuild"])
+    super().__init__("msbuild.exe",  version_cmd=True, target="msbuild")
 
 class VSInstallation():
   def __init__(self, name : str, path : Path, version : str, isPreview : str) -> None:
@@ -40,14 +43,13 @@ class VSInstallation():
 
     assert not self.ispreview, "Preview envs can not be used at the moment"
 
-    vcvarsPath = self.path / "VC/Auxiliary/Build/vcvarsall.bat"
-    start = time.monotonic()
-    out, err, success = run_process(vcvarsPath, f"{platform} 1>&2 && set") # why is this sometimes so slow also cache this 
+    vcvars = Process(self.path / "VC/Auxiliary/Build/vcvarsall.bat")
+    assert vcvars.is_valid(), "Failed set up the environment"
+    
+    out, err = vcvars(f"{platform} 1>&2 && set") # why is this sometimes so slow also cache this 
     # TODO check err output 
     
-    log(f"VCVARS took {time.monotonic() - start}")
 
-    assert success, "Failed set up the environment"
 
     for line in out.splitlines():
       name = line.split("=")
@@ -59,7 +61,7 @@ class VSInstallation():
     assert self.is_activated, "Installation has to be activated before the compilers are queried"
 
     available = [clazz() for clazz in Compiler.__subclasses__()]
-    compilers = [result for compiler in available if (result := compiler.test())]
+    compilers = [result for compiler in available if (result := compiler.is_valid())]
 
     return compilers
 
@@ -68,9 +70,8 @@ class VSInstallation():
   def find_installations() -> Self:
     # cache this in a file
     program_files_path = os.getenv("PROGRAMFILES(X86)")
-    path = Path(program_files_path + "/Microsoft Visual Studio/Installer")
-    if os.path.isdir(path):
-      output, err, _ = run_process(path / 'vswhere', "-all -format json -utf8 -nocolor")
-      # TODO what to do if call fails
-      return [VSInstallation.parse_vs_installation(installation) for installation in json.loads(output)]
-    return []
+    vswhere = Process(program_files_path + "/Microsoft Visual Studio/Installer/vswhere.exe")
+    if not vswhere.is_valid(): return []
+
+    output, err = vswhere("-all -format json -utf8 -nocolor") # TODO what to do if call fails
+    return [VSInstallation.parse_vs_installation(installation) for installation in json.loads(output)]

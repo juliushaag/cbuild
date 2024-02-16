@@ -14,3 +14,5 @@ def panic(cond : bool, msg : str):
   if cond: return
   cprint(msg, tag="ERROR", color="white", tag_color="red")
   exit(1)
+
+  
