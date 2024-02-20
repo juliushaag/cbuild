@@ -2,7 +2,7 @@ from functools import reduce
 import os
 from pathlib import Path
 from dataclasses import dataclass
-from typing import List, Self
+from typing import Self
 import yaml
 
 
@@ -14,8 +14,8 @@ class Target:
     self.root : Path = root
     self.name : str = name
     self.type : str = type
-    self._data = data
-    self._dependencies = []
+    self._data : dict[str, str] = data
+    self._dependencies : list[Target] = []
 
   def add_dependency(self, target : Self):
     self._dependencies += [target]
@@ -44,7 +44,7 @@ class Project:
 
   def _load(self, path : Path):
     path = path.resolve()
-    if path in self._files.keys(): return
+    if path in self._files.keys(): return # ciruclar 
     
     file = path / "project.yaml"
     if not os.path.isfile(file):

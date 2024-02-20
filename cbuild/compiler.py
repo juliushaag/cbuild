@@ -17,8 +17,5 @@ class Compiler:
   def target_type(self) -> str:
     return self._target
     
-  def is_valid(self) -> bool:
-    return self.is_valid
-    
   def __repr__(self) -> str:
     return f"<{type(self).NAME}>"

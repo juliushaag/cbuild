@@ -44,3 +44,6 @@ for tar in reversed(target.get_dependency_list()):
   for tool in toolchain:
     if type == tool.type:
       tool(tar)
+
+
+print_tree(target)
