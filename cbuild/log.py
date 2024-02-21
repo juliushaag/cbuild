@@ -6,6 +6,10 @@ from print_color import print as cprint
 def log(msg : str):
   cprint(msg, tag="LOG", color="white", tag_color="blue")
 
+def success(msg : str):
+  cprint(msg, tag="+", color="white", tag_color="green")
+
+
 
 def warn(msg : str):
   cprint(msg, tag="WARN", color="white", tag_color="yellow")

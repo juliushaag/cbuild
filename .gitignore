@@ -2,3 +2,6 @@
 NeuralEngine
 __pycache__
 build.bat
+**/bin/
+*.obj
+vscache.json

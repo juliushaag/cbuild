@@ -1,11 +1,8 @@
-import os
 import time
+from cbuild.compiler import Compiler
 from cbuild.log import log
 from cbuild.vstoolchain import VSInstallation
 from cbuild.project import Project, Target
-import subprocess
-
-
 
 def _tree(target:Target):
   if len(target._dependencies) == 0: return [f"━━ {target.name}"]
@@ -22,11 +19,9 @@ toolchain = []
 
 # step one find compilers :)
 installations : VSInstallation = VSInstallation.find_installations()
-installation = installations[0]
+installation = installations[1]
 installation.activate()
-toolchain = installation.get_toolchain()
 
-print("Toolchain: ", toolchain)
 
 log(f"Loaded toolchain in {time.monotonic() - start}s")
 start = time.monotonic()
@@ -36,14 +31,20 @@ project = Project(".")
 log(f"Loaded project in {time.monotonic() - start}s")
 start = time.monotonic()
 
+Compiler.Init()
+
 target = project.get_start_target()
 for tar in reversed(target.get_dependency_list()):
   
   type = tar.type
 
-  for tool in toolchain:
-    if type == tool.type:
+  for tool in Compiler.instances.values():
+    if type in tool.type:
       tool(tar)
+      break
+
+  
 
 
 print_tree(target)
+  

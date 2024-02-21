@@ -10,10 +10,10 @@ class Process:
   def is_valid(self) -> bool:
     return shutil.which(self.program) or os.path.isfile(self.program)
   
-  def run(self, args : str) -> tuple[str, str]:
+  def run(self, args : str) -> tuple[str, str, bool]:
     cmd = [self.program] + (args.split(" ") if args is not None else [])
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=os.environ, universal_newlines=True)
-    return process.communicate()
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=os.environ.copy(), universal_newlines=True)
+    return *process.communicate(), process.returncode
 
   def __call__(self, args : str) -> tuple[str, str]:
     return self.run(args)

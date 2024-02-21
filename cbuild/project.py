@@ -2,7 +2,7 @@ from functools import reduce
 import os
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Self
+from typing import Any, Self
 import yaml
 
 
@@ -26,11 +26,13 @@ class Target:
   def get_dependency_list(self):
     if len(self._dependencies) == 0: return [self]
     return reduce(lambda x, y: x + y, [c.get_dependency_list() for c in self._dependencies], [self])
+   
+  def get(self, key : str, default : Any) -> Any: 
+    if key not in self._data: return default
+    else: return self._data[key]
     
   def __repr__(self) -> str:
     return f"<{self.name} of type {self.type} at {self.root}>"
-   
-
 
 class Project:
   def __init__(self, path : str = "."):
@@ -62,7 +64,7 @@ class Project:
 
         # load targets
         elif key[0] == "(" and key[-1] == ")":
-          self._load_target(key, element, file, path)
+          self._load_target(key[1:-1], element, file, path)
 
         # load variables
         elif key[0] == "$":
@@ -91,6 +93,7 @@ class Project:
       if not isinstance(dependencies, list): dependencies = [dependencies] 
       
       for dependency in dependencies:
+        dependency = dependency[1:-1]
         panic(dependency in self._targets.keys(), f"({target.file()}) Could not find dependency {dependency}")
         target.add_dependency(self._targets[dependency])
     
@@ -101,7 +104,7 @@ class Project:
     panic(len(self._targets) != 0, f"There are no targets declared")
     if "StartProject" in self._variables:
       name = self._variables["StartProject"]
-      panic(name in self._targets.keys(), f"Specified start project {name} not specified")
+      panic(f"{name}" in self._targets.keys(), f"Specified start project {name} not specified")
       return self._targets[name]
     
     return list(self._targets.values())[0]
