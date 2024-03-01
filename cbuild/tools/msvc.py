@@ -20,8 +20,7 @@ class MSVCCompiler(Compiler):
     self.lib = Program("lib.exe")
     self.is_valid = self.compiler.is_valid()
 
-    
-
+  
   def __call__(self, target : Target, res : LibCompileResult) -> CompileResult:
     assert target.type in self.type 
     #  CL [option...] file... [option | file]... [lib...] [@command-file] [/link link-opt...]

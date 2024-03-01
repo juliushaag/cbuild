@@ -1,6 +1,7 @@
 import abc
 import os
 from pathlib import Path
+import shutil
 from cbuild.compiler import Compiler, CompileResult, LibCompileResult
 from cbuild.project import Target
 from cbuild.processes import Program
@@ -24,7 +25,7 @@ class CMakeCompiler(Compiler):
     folder = target.root / target.get("folder", ".")
     pub_includes = target.get("includes", [])
     pub_includes = [target.root / include for include in pub_includes]
-    defines = [f"-D{key}={value}" for key, value in target.get("defines", {}).items()] + ["-DCMAKE_BUILD_TYPE=Release"]
+    defines = [f"-D{key}={value}" for key, value in target.get("defines", {}).items()]
 
     cache = CacheFile(bin_dir / "cbuild.cache")
 
@@ -34,8 +35,8 @@ class CMakeCompiler(Compiler):
       success(CMakeCompiler.NAME + " cached " + target.name)
       return LibCompileResult(**cache[hash_value])    
 
-
-    command = f"{" ".join(defines)} --fresh -B {bin_dir} -S {folder}"
+    shutil.rmtree(bin_dir)
+    command = f"{" ".join(defines)} -B {bin_dir} -S {folder}"
     out, err, code = self.compiler(command)
 
     panic(code == 0, CMakeCompiler.NAME + " failed on " + target.name + " " + err)

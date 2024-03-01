@@ -12,7 +12,10 @@ class CacheJsonEncoder(json.JSONEncoder):
 class CacheFile:
   def __init__(self, file_path : Path) -> None:
 
+    
+
     self.file = file_path if isinstance(file_path, Path) else Path(file_path)
+    os.makedirs(self.file.parent, exist_ok=True)
     self.file.touch()
     
     with open(self.file, "r") as fp:

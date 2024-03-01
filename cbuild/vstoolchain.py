@@ -15,7 +15,7 @@ from cbuild.tools.cmake import CMakeCompiler
   
 
 class VSInstallation():
-  CACHE_FILE = "vscache.json"
+  CACHE_FILE = "vscache.cache"
   def __init__(self, name : str, path : str, version : str, isPreview : str, update_date : str) -> None:
     self.name : str = name
     self.path : Path = Path(path)

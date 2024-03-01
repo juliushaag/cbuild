@@ -5,3 +5,8 @@ build.bat
 **/bin/
 *.obj
 vscache.json
+build/
+dist/
+*-info/
+cbuild.spec
+**.cache/
