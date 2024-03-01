@@ -3,24 +3,19 @@ import os
 import time
 from typing import Self
 from pathlib import Path
+from cbuild.cache import CacheFile
 from cbuild.log import log
 from cbuild.compiler import Compiler
-from cbuild.processes import Process
+from cbuild.processes import Program
 from cbuild.project import Target
+
 from cbuild.tools.msvc import MSVCCompiler
 from cbuild.tools.cmake import CMakeCompiler
-from cbuild.tools.cmake import MSBuildCompiler
-import cbuild
 
-
-class ClangCompiler(Compiler):
-  NAME = "clang"
-  def __init__(self):
-    super().__init__("compiled")
   
 
 class VSInstallation():
-  CACHE_FILE = "vscache.json" # Path(cbuild.CBUILD_INSTALL_DIR) / "cache
+  CACHE_FILE = "vscache.json"
   def __init__(self, name : str, path : str, version : str, isPreview : str, update_date : str) -> None:
     self.name : str = name
     self.path : Path = Path(path)
@@ -33,9 +28,6 @@ class VSInstallation():
     self.hash = self.name + self.update_data
 
 
-  def __hash__(self) -> int:
-    return self.hash
-
 
   def activate(self, platform = 'x64'):    
 
@@ -43,26 +35,22 @@ class VSInstallation():
 
     log(f"Initializing {self.name} {".".join([str(i) for i in self.version])}")
 
-    cache = {}
-    if os.path.isfile(VSInstallation.CACHE_FILE):
-      with open(VSInstallation.CACHE_FILE, "r") as fp:
-        content = fp.read()
-        cache = json.loads(content) if content else {}
 
+    cache = CacheFile(VSInstallation.CACHE_FILE)
     conf_hash = self.hash + platform
 
     update_environ = {}
     if conf_hash not in cache:
-
-      vcvars = Process(self.path / "VC/Auxiliary/Build/vcvarsall.bat")
+      vcvars = Program(self.path / "VC/Auxiliary/Build/vcvarsall.bat")
       assert vcvars.is_valid(), "Failed set up the environment"
       
       out, err, code = vcvars(f"{platform} 1>&2 && set") # why is this sometimes so slow also cache this 
       # TODO check err output
-    
+
       for line in out.splitlines():
 
-        split = lambda list, sep: filter(None, list.split(sep) if sep in list else [list])
+
+        split = lambda array, sep: filter(None, array.split(sep) if sep in array else [array])
 
         line = line.split("=", 1)
         name, content = line[0], list(split(line[1], ";"))
@@ -71,9 +59,9 @@ class VSInstallation():
 
         result = [element for element in content if element not in original]
         
-        if len(result) > 0: continue
-        
+        if len(result) == 0: continue
         update_environ[name] = result # just update new stuff
+
     else:
       update_environ = cache[conf_hash]
 
@@ -82,8 +70,6 @@ class VSInstallation():
 
     cache[conf_hash] = update_environ # update cache
 
-    with open(VSInstallation.CACHE_FILE, "w") as fp:
-      json.dump(cache, fp=fp, indent=2)
 
     self.is_activated = True
     Compiler.arch = platform
@@ -91,10 +77,11 @@ class VSInstallation():
   def parse_vs_installation(x): 
     return 
   
-  def find_installations() -> Self:
+  @staticmethod
+  def find_installations() -> list["VSInstallation"]:
     # cache this in a file
-    program_files_path = os.getenv("PROGRAMFILES(X86)")
-    vswhere = Process(program_files_path + "/Microsoft Visual Studio/Installer/vswhere.exe")
+    program_files_path : str = os.getenv("PROGRAMFILES(X86)") or ""
+    vswhere = Program(program_files_path + "/Microsoft Visual Studio/Installer/vswhere.exe")
     if not vswhere.is_valid(): return []
 
     output, err, code = vswhere("-all -format json -utf8 -nocolor") # TODO what to do if call fails

@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+      {
+          "name": "CBuild",
+          "type": "cppvsdbg",
+          "request": "launch",
+          "program": "bin/Sandbox.exe",
+          "args": [],
+          "stopAtEntry": false,
+          "cwd": "${workspaceRoot}\\Sandbox\\",
+          "environment": [],
+      }
+  ]
+}

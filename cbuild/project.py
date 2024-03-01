@@ -28,25 +28,25 @@ class Target:
     return reduce(lambda x, y: x + y, [c.get_dependency_list() for c in self._dependencies], [self])
    
   def get(self, key : str, default : Any) -> Any: 
-    if key not in self._data: return default
-    else: return self._data[key]
-    
+    if key in self._data: return self._data[key]
+    assert default is not None
+    return default
   def __repr__(self) -> str:
     return f"<{self.name} of type {self.type} at {self.root}>"
 
 class Project:
   def __init__(self, path : str = "."):
-    self._files = {}
-    self._settings = {}
-    self._targets = {}
-    self._variables = {}
+    self._files : dict[Path, Any] = {}
+    self._settings : dict[str, Any] = {}
+    self._targets : dict[str, Target] = {}
+    self._variables : dict[str, Any] = {}
     self._load(Path(path))
     self._resolve_dependencies()
 
 
   def _load(self, path : Path):
     path = path.resolve()
-    if path in self._files.keys(): return # ciruclar 
+    if path in self._files: return # ciruclar 
     
     file = path / "project.yaml"
     if not os.path.isfile(file):
@@ -93,7 +93,6 @@ class Project:
       if not isinstance(dependencies, list): dependencies = [dependencies] 
       
       for dependency in dependencies:
-        dependency = dependency[1:-1]
         panic(dependency in self._targets.keys(), f"({target.file()}) Could not find dependency {dependency}")
         target.add_dependency(self._targets[dependency])
     

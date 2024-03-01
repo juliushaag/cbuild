@@ -1,6 +1,7 @@
 import time
-from cbuild.compiler import Compiler
-from cbuild.log import log
+from cbuild.compiler import CompileResult, Compiler
+from cbuild.log import log, error
+from cbuild.processes import Program
 from cbuild.vstoolchain import VSInstallation
 from cbuild.project import Project, Target
 
@@ -14,12 +15,11 @@ def _tree(target:Target):
 def print_tree(target:Target): 
   for i,s in enumerate(_tree(target)): print(f"{i} {s}")
 
-start = time.monotonic()
-toolchain = []
+glob_start = start = time.monotonic()
 
 # step one find compilers :)
-installations : VSInstallation = VSInstallation.find_installations()
-installation = installations[1]
+installations : list[VSInstallation] = VSInstallation.find_installations()
+installation = installations[0]
 installation.activate()
 
 
@@ -34,17 +34,24 @@ start = time.monotonic()
 Compiler.Init()
 
 target = project.get_start_target()
-for tar in reversed(target.get_dependency_list()):
+
+
+def compile_target(target : Target) -> CompileResult:
+  result = CompileResult()
+  for child in target._dependencies:
+    res = compile_target(child)
+    if res.error(): return res
+    result += res
+
+  return Compiler.Compile(target, result)
   
-  type = tar.type
+result = compile_target(target)
 
-  for tool in Compiler.instances.values():
-    if type in tool.type:
-      tool(tar)
-      break
-
-  
-
+if result.error():
+  error(result)
 
 print_tree(target)
   
+
+print("Execution ", target.name, "took", time.monotonic() - glob_start, "seconds")
+print("=>", result.executable[0])

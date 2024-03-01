@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Optional
 from cbuild.compiler import Compiler
 from cbuild.log import success
-from cbuild.processes import Process
+from cbuild.processes import Program
 from cbuild.project import Target
 
 
@@ -11,7 +11,7 @@ class MSBuildCompiler(Compiler):
   def __init__(self):
     super().__init__("msbuild")
 
-    self.compiler = Process("msbuild")
+    self.compiler = Program("msbuild")
 
 
     if self.compiler.is_valid(): self.is_valid = True

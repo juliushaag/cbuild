@@ -19,4 +19,8 @@ def panic(cond : bool, msg : str):
   cprint(msg, tag="ERROR", color="white", tag_color="red")
   exit(1)
 
+def error(msg : str):
+  cprint(msg, tag="ERROR", color="white", tag_color="red")
+  exit(1)
+
   
