@@ -11,7 +11,8 @@ import re
 
 class MSVCCompiler(Compiler):
   NAME = "MSVC"
-  STD_LIBS = "kernel32.lib User32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib msvcrt.lib".split(" ")
+  STD_LIBS = "kernel32.lib User32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib opengl32.lib".split(" ")
+  
   def __init__(self):
     super().__init__(["c", "c++"])  
     self.compiler = Program("cl.exe")
@@ -23,39 +24,49 @@ class MSVCCompiler(Compiler):
   def __call__(self, target : Target, res : LibCompileResult) -> CompileResult:
     assert target.type in self.type 
     #  CL [option...] file... [option | file]... [lib...] [@command-file] [/link link-opt...]
-    args = ["/nologo", "/Z7"]
-    includes = target.get("includes", [])
+    args = ["/nologo", "/c", "/Z7", "/EHsc", "/MDd"]
     sources = target.get("sources", []) 
-    bin_dir = target.get("bin_dir", "bin/")
+    include_paths = target.get("includes", [])
+    bin_dir = target.root / target.get("bin_dir", "bin/") / target.name
     kind = target.get("kind", None)
     defines = target.get("defines", [])
     debug = target.get("debug", False)
 
-    if not os.path.isdir(target.root / bin_dir): os.mkdir(target.root / bin_dir)
-    
-
     sources = sources if isinstance(sources, list) else [sources]
-    includes = includes if isinstance(includes, list) else [includes]
+    include_paths = include_paths if isinstance(include_paths, list) else [include_paths]
+    include_paths = [str(target.root / i) for i in include_paths]
+    includes = ["-I" + include for include in include_paths]
+    includes += ["-I" + include for include in res.includes]
 
-    includes = [target.root / include for include in includes] + res.includes
     args = ["/D " + name for name in defines] + args
 
+    if not os.path.isdir(target.root / bin_dir): os.makedirs(target.root / bin_dir)
     
-    if kind == "header": return HeaderCompileResult(includes=includes)
-
-    # TODO this is garbage 
-    compiled_files = []
-
-
-    # Yeah this is a little scuffed due to early dispatch 
-    start = time.monotonic()
-    running : deque[tuple[Process, Path]] = deque([self._compile_file_start(target.root, file, bin_dir, args, includes) for source in sources for file in glob(source, root_dir=target.root, recursive=True)])
-    finished = []
+    if kind == "header": return HeaderCompileResult(includes=include_paths)
 
     success(MSVCCompiler.NAME + " compiles " + target.name)
 
+    pch_files : list[tuple[str, str]] = res.pch_files
+
+  
+    compiled_files = []
+    if pch_data := target.get("precompiled_header", None):
+      source = pch_data["source"]
+      header = Path(pch_data["header"]).name
+      compiled = self._compile_pch(target.root, source, bin_dir, args, includes, header)
+      pch_file = str(compiled.get_file())
+      pch_files += [(header, pch_file)]
+    
+    for item in pch_files:
+      args = ["/FI" + item[0], "/Yu" + item[0], "/Fp" + item[1]] + args
+
+    # Yeah this is a little scuffed due to early dispatch 
+    running : deque[tuple[Process, Path]] = deque([self._compile_file_start(target.root, file, bin_dir, args, includes) for source in sources for file in glob(source, root_dir=target.root, recursive=True)])
+    finished = []
+
+
     # polling the compile status
-    while running and (element := running.pop()):
+    while running and (element := running.popleft()):
       process = element[0]
       if process.hash_finished():
         finished.append(self._compile_file_end(*element))
@@ -67,37 +78,63 @@ class MSVCCompiler(Compiler):
       compiled_files += [i.get_file()]
 
     if kind == "exe": 
-      exe = self._compile_exe(compiled_files, res.static_lib, target.root / bin_dir, target.name)
+      exe = self._compile_exe(compiled_files, res.static_lib, bin_dir, target.name)
       return exe
     
     elif kind == "lib":
-      lib = self._compile_lib(compiled_files + res.static_lib, target.root / bin_dir, target.name)
-      lib.includes = includes
+      lib = self._compile_lib(compiled_files + res.static_lib, bin_dir, target.name)
+      lib.includes = include_paths if isinstance(include_paths, list) else [include_paths] 
+      lib.pch_files = pch_files
       return lib
     
     else: assert False
   
-  def _compile_file_start(self, root : Path, file : str, bin_folder : Path, args : list[str], includes) -> tuple[Process, Path]:
+  def _compile_file_start(self, root : Path, file : str, bin_folder : Path, args : list[str], includes : list) -> tuple[Process, Path]:
+    
+    is_c = file.endswith(".c")
+
+    type_switch = "/Tc" if is_c else "/Tp"
+    output_file = file.replace(".c" if is_c else "cpp", ".obj")
+    output_file = bin_folder / output_file.replace("/", ".").replace("\\", ".")
     
     src_file = root / file
-    includes = ["-I" + str(root / include) for include in includes] if includes is not None else []
-    output_file = root / bin_folder / file.replace(".c", ".obj").replace("/", ".").replace("\\", ".")
-    command = f"{" ".join(args)} /c /Tc {src_file} {" ".join(includes)} /Fo{output_file}"
-    return (self.compiler.run_async(command), output_file)
-  
-  def _compile_file_end(self, process : Process, output_file : Path):
 
+    command = f"{" ".join(args)} {" ".join(includes)} /Fo{output_file} {type_switch} {src_file}"
+    return (self.compiler.run_async(command), output_file)
+
+  def _compile_file_end(self, process : Process, output_file : Path):
     out, err, code = process.wait()
     if code != 0: 
-      return self._parse_error(out.split("\n", 1)[1])
-    
+      split_str = out.split("\n", 1)
+      error = self._parse_error(split_str[1])
+      print(split_str)
+      return error
     print(out.strip())
     return ObjCompileResult(output_file)
   
+  def _compile_pch(self, root : Path, file : str, bin_folder : Path, args : list[str], includes : list, header : str):
+    
+   
+    type_switch = "/Tp"
+    output_file = bin_folder / file.replace(".cpp", ".pch").replace("/", ".").replace("\\", ".")
+
+    src_file = root / file
+    command = f"{" ".join(args)} {" ".join(includes)} /Yc{header} {type_switch} {src_file} /Fp{output_file}"
+    out, err, code = self.compiler(command)
+
+    if code != 0: 
+      split_str = out.split("\n", 1)
+      error = self._parse_error(split_str[1])
+      print(split_str)
+      return error
+    
+    print(out.strip())
+    return ObjCompileResult(output_file)
+
   def _compile_exe(self, compiled, libs, out_path : Path, name : str) -> ExeCompileResult | CompileError:
 
     out_path = out_path / (name + ".exe")
-    cmd = f"/nologo /debug /OUT:{str(out_path)} {" ".join([str(lib) for lib in libs])} {" ".join([str(comp) for comp in compiled])} {" ".join([str(lib) for lib in MSVCCompiler.STD_LIBS])}"
+    cmd = f"/nologo /debug /OUT:{str(out_path)} {" ".join([str(lib) for lib in libs + compiled])} {" ".join(MSVCCompiler.STD_LIBS)}"
     out, err, code = self.linker(cmd)
   
     if code != 0: return self._parse_error(err + out)

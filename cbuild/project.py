@@ -29,8 +29,8 @@ class Target:
    
   def get(self, key : str, default : Any) -> Any: 
     if key in self._data: return self._data[key]
-    assert default is not None
     return default
+  
   def __repr__(self) -> str:
     return f"<{self.name} of type {self.type} at {self.root}>"
 
@@ -40,6 +40,9 @@ class Project:
     self._settings : dict[str, Any] = {}
     self._targets : dict[str, Target] = {}
     self._variables : dict[str, Any] = {}
+
+    panic(os.path.isfile(Path(path) / "project.yaml"), "Nothing found")
+
     self._load(Path(path))
     self._resolve_dependencies()
 
@@ -49,9 +52,7 @@ class Project:
     if path in self._files: return # ciruclar 
     
     file = path / "project.yaml"
-    if not os.path.isfile(file):
-      print("[W] invalid include ", path)
-      return 
+    panic(os.path.isfile(file), "invalid include " + str(path))
 
     with open(file, "r") as fp:
       a = yaml.safe_load(fp.read()) or {}
@@ -80,6 +81,7 @@ class Project:
     self._targets[name] = Target(root=path, name=name, type=content.get("type", None), data=content)
     
   def _load_variable(self, name, content):
+    print(name)
     if name in self._targets: warn("Variable", name, "gets overwritten")
     self._variables[name] = content
     
@@ -101,12 +103,11 @@ class Project:
   def get_start_target(self):
 
     panic(len(self._targets) != 0, f"There are no targets declared")
-    if "StartProject" in self._variables:
-      name = self._variables["StartProject"]
-      panic(f"{name}" in self._targets.keys(), f"Specified start project {name} not specified")
-      return self._targets[name]
-    
-    return list(self._targets.values())[0]
+    panic("StartProject" in self._variables, "There has to be a start target declared with $StartProject")
+    name = self._variables["StartProject"]
+    panic(f"{name}" in self._targets.keys(), f"Specified start project {name} not specified")
+    return self._targets[name]
+
 
 
   def __repr__(self) -> str:

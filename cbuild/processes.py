@@ -39,3 +39,12 @@ class Process:
 
   def kill(self):
     self.link.kill()
+
+  def output(self):
+    for stdout_line in iter(self.link.stdout.readline, ""):
+      yield stdout_line
+  
+  def error(self):
+    for stdout_line in iter(self.link.stderr.readline, ""):
+      yield stdout_line
+  

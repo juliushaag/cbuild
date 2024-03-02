@@ -2,7 +2,7 @@ import abc
 import os
 from pathlib import Path
 import shutil
-from cbuild.compiler import Compiler, CompileResult, LibCompileResult
+from cbuild.compiler import Compiler, CompileResult, LibCompileResult, CompileError
 from cbuild.project import Target
 from cbuild.processes import Program
 from cbuild.log import log, success, panic
@@ -24,8 +24,12 @@ class CMakeCompiler(Compiler):
     bin_dir = target.root / target.get("bin_dir", "bin/") / target.name 
     folder = target.root / target.get("folder", ".")
     pub_includes = target.get("includes", [])
-    pub_includes = [target.root / include for include in pub_includes]
     defines = [f"-D{key}={value}" for key, value in target.get("defines", {}).items()]
+    
+    if not isinstance(pub_includes, list):
+      pub_includes = [pub_includes] 
+    
+    pub_includes = [target.root / include for include in pub_includes]
 
     cache = CacheFile(bin_dir / "cbuild.cache")
 
@@ -35,27 +39,41 @@ class CMakeCompiler(Compiler):
       success(CMakeCompiler.NAME + " cached " + target.name)
       return LibCompileResult(**cache[hash_value])    
 
+    success(CMakeCompiler.NAME + " creating build files " + target.name)
     shutil.rmtree(bin_dir)
     command = f"{" ".join(defines)} -B {bin_dir} -S {folder}"
-    out, err, code = self.compiler(command)
+    process = self.compiler.run_async(command)
 
+    for message in process.output():
+      print(message, end="")
+
+    out, err, code = process.wait()
     panic(code == 0, CMakeCompiler.NAME + " failed on " + target.name + " " + err)
 
-    success(CMakeCompiler.NAME + " created " + target.name)
 
-    out, err, code = self.compiler(f"--build {bin_dir}")
 
+    success(CMakeCompiler.NAME + " building " + target.name)
+    process = self.compiler.run_async(f"--build {bin_dir}")
+
+    
     static_lib = None
-    for line in out.splitlines():
-      if "->" not in line: continue
-      static_lib = line.split("-> ")[1]
+    for message in process.output():
+      print(message, end="")
+      if "->" in message and message.endswith(".lib\n"): 
+        static_lib = message.split("-> ")[1].replace("\n", "")
 
-    assert static_lib
+    _, _, code = process.wait()
+
+    if not static_lib:
+      return CompileError(folder, 0, "Failed to find a library to compile", 0)
 
     cache[hash_value] = {
       "includes" : pub_includes,
       "static_lib" : static_lib
     }
+
+    
+    success(CMakeCompiler.NAME + " compiled " + static_lib)
 
 
     return LibCompileResult(pub_includes, static_lib)

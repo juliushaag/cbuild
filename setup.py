@@ -1,4 +1,7 @@
 from setuptools import setup, find_packages
+entry_points = {
+    'console_scripts': ['cbuild=cbuild.cbuild:main'],
+}
 
 setup(
     name='cbuild',
@@ -13,4 +16,5 @@ setup(
     extras_require={},
     zip_safe=False,
     include_package_data=True,
+    entry_points=entry_points,
 )

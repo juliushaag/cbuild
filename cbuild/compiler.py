@@ -7,13 +7,14 @@ from typing import Any, Optional, Self
 from cbuild.project import Target
 
 class CompileResult:
-  def __init__(self, includes = [], static_lib  = [], executables = []):
-    self.includes = includes
-    self.static_lib = static_lib
+  def __init__(self, includes = [], static_lib  = [], executables = [], pch_files= []):
+    self.includes = [includes] if isinstance(includes, str) else includes
+    self.static_lib = [static_lib] if isinstance(static_lib, str) else static_lib
     self.executable = executables
+    self.pch_files = pch_files
 
   def __add__(self, other : Self) -> "CompileResult":
-    return CompileResult(self.includes + other.includes,self.static_lib + other.static_lib)
+    return CompileResult(self.includes + other.includes,self.static_lib + other.static_lib, pch_files=self.pch_files + other.pch_files)
   
   def error(self):
     return False
@@ -23,9 +24,9 @@ class CompileResult:
   
 
 class LibCompileResult(CompileResult):
-  def __init__(self, includes: list[str], static_lib: list[str] | str):
+  def __init__(self, includes: list[str], static_lib: list[str] | str, pch_files : list[str] = []):
     static_lib = [static_lib] if not isinstance(static_lib, list) else static_lib
-    super().__init__(includes = includes, static_lib = static_lib)
+    super().__init__(includes = includes, static_lib = static_lib, pch_files = pch_files)
 
 class ExeCompileResult(CompileResult):
   def __init__(self, executables: Path):
