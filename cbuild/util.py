@@ -13,9 +13,9 @@ def hash_folder(folder : Path, hash_fn : Callable = hashlib.sha256, exclude = {}
   
   for file in files:
     if file.suffix in exclude: continue
+    if not file.is_file(): continue 
     with open(file, "rb") as fp:
         hash.update(fp.read())
 
   return hash.hexdigest()
-
 

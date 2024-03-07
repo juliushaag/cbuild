@@ -1,25 +1,26 @@
 import time
-from cbuild.compiler import CompileResult, Compiler
+from cbuild.compiler import CompileError, CompileResult, Compiler
 from cbuild.log import log, error
 from cbuild.processes import Program
 from cbuild.vstoolchain import VSInstallation
 from cbuild.project import Project, Target
-
+import sys
 def _tree(target:Target):
-  if len(target._dependencies) == 0: 
-    return [f"━━ {target.name}"]
-  lines = [f"━┳ {target.name}"]
-  children = [_tree(c) for c in target._dependencies]
-  for c in children[:-1]: 
-    lines += [" ┣" + c[0]]
-    lines += [" ┃" + l for l in c[1:]]
+  if len(target._dependencies) == 0: return [f"═ {target.name}"]
 
-  lines += [" ┗" + children[-1][0]]
+  lines = [f"═╩ {target.name}"]
+  children = [_tree(c) for c in target._dependencies]
+
+  for c in children[:-1]: 
+    lines += [" ╠" + c[0]]
+    lines += [" ║" + l for l in c[1:]]
+
+  lines += [" ╔" + children[-1][0]]
   lines += ["  " + line for line in children[-1][1:]]
   return lines 
 
 def print_tree(target:Target): 
-  for line in _tree(target): print(f" {line}")
+  for line in reversed(_tree(target)): print(f"{line}")
 
 
 def compile_target(target : Target) -> CompileResult:
@@ -37,14 +38,13 @@ def main():
 
   # step one find compilers :)
   installations : list[VSInstallation] = VSInstallation.find_installations()
-  installation = installations[0]
+  installation = installations[1]
   installation.activate()
 
   # Create project and determine start target
   project = Project(".")
   target = project.get_start_target()
   print_tree(target)
-  start = time.monotonic()
 
   Compiler.Init()
 
@@ -54,5 +54,4 @@ def main():
   if result.error():
     error(result)
 
-  print("Execution ", target.name, "took", time.monotonic() - glob_start, "seconds")
-  print("=>", result.executable[0], end="")
+  print("Execution took", time.monotonic() - glob_start, "seconds")

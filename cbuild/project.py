@@ -81,7 +81,6 @@ class Project:
     self._targets[name] = Target(root=path, name=name, type=content.get("type", None), data=content)
     
   def _load_variable(self, name, content):
-    print(name)
     if name in self._targets: warn("Variable", name, "gets overwritten")
     self._variables[name] = content
     

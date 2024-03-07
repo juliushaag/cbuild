@@ -1,12 +1,5 @@
-﻿Sandbox
-NeuralEngine
-__pycache__
-build.bat
-**/bin/
-*.obj
-vscache.json
-build/
-dist/
-*-info/
-cbuild.spec
-**.cache/
+﻿*
+!cbuild/
+!*://
+!*.py
+!*.me

@@ -1,15 +1,24 @@
 {
   "version": "0.2.0",
   "configurations": [
-      {
-          "name": "CBuild",
-          "type": "cppvsdbg",
-          "request": "launch",
-          "program": "bin/Sandbox.exe",
-          "args": [],
-          "stopAtEntry": false,
-          "cwd": "${workspaceRoot}\\Sandbox\\",
-          "environment": [],
-      }
+    {
+      "name": "CBuild",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceRoot}/Sandbox/bin/Sandbox/Sandbox.exe",
+      "args": [],
+      "stopAtEntry": false,
+      "enableDebugHeap": true,
+      "cwd": "${workspaceRoot}\\Sandbox\\",
+      "environment": [],
+      "preLaunchTask": "cbuild",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Python Debugger: Python File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}"
+    }
   ]
 }
