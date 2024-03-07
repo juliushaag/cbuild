@@ -1,4 +1,0 @@
-Compiler: msvc
-
-Cache: off # Not supported right now
-DebugLevel: 4
